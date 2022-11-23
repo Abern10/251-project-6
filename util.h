@@ -6,7 +6,15 @@
 
 #pragma once
 
-// TODO: includes go here
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <queue>
+#include <string>
+#include <vector>
+
+#include "bitstream.h"
+#include "hashmap.h"
 
 typedef hashmap hashmapF;
 typedef unordered_map <int, string> hashmapE;
@@ -41,19 +49,60 @@ void freeTree(HuffmanNode* node) {
 // from filename.  If isFile is false, then it reads from a string filename.
 //
 void buildFrequencyMap(string filename, bool isFile, hashmapF &map) {
-    
-    // TO DO:  Write this function here.
-    
+    if(isFile) {
+        ifstream inFS(filename);
+        char c;
+
+        while (inFS.get(c)) {
+            if(map.containsKey(c)) {
+                map.put(int(c), map.get(c) + 1);
+            }
+            else {
+                map.put(int(c), 1);
+            }
+        }
+    }
+    else {
+        for(char c : filename) {
+            if(map.containsKey(c)) {
+                map.put(c, map.get(c) + 1);
+            }
+            else {
+                map.put(c, 1);
+            }
+        }
+    }
+    map.put(256, 1);
 }
 
 //
 // *This function builds an encoding tree from the frequency map.
 //
 HuffmanNode* buildEncodingTree(hashmapF &map) {
+    priority_queue<HuffmanNode*, vector<HuffmanNode*>, compare> pq;
     
-    // TO DO:  Write this function here.
-    
-    return nullptr;  // TO DO: update this return
+    for(int key : map.keys()) {
+        HuffmanNode* newNode = new HuffmanNode;
+        newNode->character = key;
+        newNode->count = map.get(key);
+        newNode->zero = nullptr;
+        newNode->one = nullptr;
+        pq.push(newNode);
+    }
+
+    while(pq.size() > 1) {
+        HuffmanNode* firstPop = pq.top();
+        pq.pop();
+        HuffmanNode* secondPop = pq.top();
+        pq.pop();
+        HuffmanNode* newNode = new HuffmanNode;
+        newNode->character = 257;
+        newNode->count = firstPop->count + secondPop->count;
+        newNode->zero = firstPop;
+        newNode->one = secondPop;
+        pq.push(newNode);
+    }
+    return pq.top(); // returns the root of the tree
 }
 
 //
