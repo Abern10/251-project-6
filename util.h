@@ -39,9 +39,12 @@ struct compare
 // *This method frees the memory allocated for the Huffman tree.
 //
 void freeTree(HuffmanNode* node) {
-    
-    // TO DO:  Write this function here.
-    
+    if(node == nullptr) {
+        return;
+    }
+    freeTree(node->zero);
+    freeTree(node->one);
+    delete node;
 }
 
 //
@@ -108,10 +111,18 @@ HuffmanNode* buildEncodingTree(hashmapF &map) {
 //
 // *Recursive helper function for building the encoding map.
 //
-void _buildEncodingMap(HuffmanNode* node, hashmapE &encodingMap, string str,
-                       HuffmanNode* prev) {
-    
-    // TO DO:  Write this function here.
+void _buildEncodingMap(HuffmanNode* node, hashmapE &encodingMap, string str, HuffmanNode* prev) {
+    if(node == nullptr) {
+        return;
+    }
+    prev = node;
+    if(node->character != 257) {
+        encodingMap.insert({int(node->character), str});
+        return;
+    }
+    _buildEncodingMap(node->zero, encodingMap, str += "0", prev);
+    str.pop_back();
+    _buildEncodingMap(node->one, encodingMap, str += "1", prev);
     
 }
 
@@ -120,8 +131,11 @@ void _buildEncodingMap(HuffmanNode* node, hashmapE &encodingMap, string str,
 //
 hashmapE buildEncodingMap(HuffmanNode* tree) {
     hashmapE encodingMap;
-    
-    // TO DO:  Write this function here.
+    HuffmanNode* node = tree;
+    string str = "";
+
+    _buildEncodingMap(node, encodingMap, str, node);
+
     
     return encodingMap;  // TO DO: update this return
 }
@@ -133,12 +147,23 @@ hashmapE buildEncodingMap(HuffmanNode* tree) {
 // passed by reference.  This function also returns a string representation of
 // the output file, which is particularly useful for testing.
 //
-string encode(ifstream& input, hashmapE &encodingMap, ofbitstream& output,
-              int &size, bool makeFile) {
-    
-    // TO DO:  Write this function here.
-    
-    return "";  // TO DO: update this return
+string encode(ifstream& input, hashmapE &encodingMap, ofbitstream& output, int &size, bool makeFile) {
+    string result = "";
+    char c;
+    while(input.get(c)) {
+        result += encodingMap[int(c)];
+        size += encodingMap[int(c)].size();
+    }
+    result += encodingMap[256];
+    size += encodingMap[256].size();
+
+    if(makeFile) {
+        for(char c : result) {
+            output.writeBit(c == '0' ? 0 : 1);
+        }
+    }
+
+    return result;  // TO DO: update this return
 }
 
 
@@ -148,10 +173,27 @@ string encode(ifstream& input, hashmapE &encodingMap, ofbitstream& output,
 // representation of the output file, which is particularly useful for testing.
 //
 string decode(ifbitstream &input, HuffmanNode* encodingTree, ofstream &output) {
-    
-    // TO DO:  Write this function here.
-    
-    return "";  // TO DO: update this return
+    string result = "";
+    HuffmanNode* node = encodingTree;
+
+    while(!input.eof()) {
+        int bit = input.readBit();
+        if(bit == 0) {
+            node = node->zero;
+        }
+        else {
+            node = node->one;
+        }
+        if(node->character != 257) {
+            if(node->character == 256) {
+                break;
+            }
+            output.put(char(node->character));
+            result += node->character;
+            node = encodingTree;
+        }
+    }
+    return result;  // TO DO: update this return
 }
 
 //
@@ -163,10 +205,26 @@ string decode(ifbitstream &input, HuffmanNode* encodingTree, ofstream &output) {
 // return a string version of the bit pattern.
 //
 string compress(string filename) {
+    string result = "";
+    int size = 0;
+    hashmapF fM;
+
+    buildFrequencyMap(filename, true, fM);
+    HuffmanNode* eT = buildEncodingTree(fM);
+    hashmapE eM = buildEncodingMap(eT);
+
+    ofbitstream output(filename + ".huf");
+    output << fM;
+
+    ifstream input(filename);
     
-    // TO DO:  Write this function here.
-    
-    return "";  // TO DO: update this return
+    result = encode(input, eM, output, size, true);
+
+    input.close();
+    output.close();
+    freeTree(eT);
+
+    return result;  // TO DO: update this return
 }
 
 //
@@ -181,8 +239,20 @@ string compress(string filename) {
 // function did.
 //
 string decompress(string filename) {
+    string result = "";
+
+    hashmap fM;
+    ifbitstream input(filename);
+    ofstream output(filename.substr(0, filename.size() - 8) + "_unc.txt");
     
-    // TO DO:  Write this function here.
-    
-    return "";  // TO DO: update this return
+    input >> fM;
+    HuffmanNode* eT = buildEncodingTree(fM);
+
+    result = decode(input, eT, output);
+
+    input.close();
+    output.close();
+    freeTree(eT);
+
+    return result;  // TO DO: update this return
 }
