@@ -1,8 +1,13 @@
 //
-// STARTER CODE: util.h
+//  util.h
+//  Program 6: File Compression
+//  Course: CS 251, Fall 2022. Thursday 12pm lab
+//  System: VS Code on Microsoft Windows
 //
-// TODO:  Write your own header
+// Author: Alexander Bernatowicz
 //
+// The objective of this program is to use a priority queue, binary search tree, and a map to compress a file to a smaller size.
+// To complete the file compression we use the Huffman Algorithim to convert all characters into binary.
 
 #pragma once
 
@@ -39,10 +44,10 @@ struct compare
 // *This method frees the memory allocated for the Huffman tree.
 //
 void freeTree(HuffmanNode* node) {
-    if(node == nullptr) {
+    if(node == nullptr) { // base case to check if tree is empty
         return;
     }
-    freeTree(node->zero);
+    freeTree(node->zero); // recursive calls to delete all nodes
     freeTree(node->one);
     delete node;
 }
@@ -52,10 +57,10 @@ void freeTree(HuffmanNode* node) {
 // from filename.  If isFile is false, then it reads from a string filename.
 //
 void buildFrequencyMap(string filename, bool isFile, hashmapF &map) {
-    if(isFile) {
+    if(isFile) { // if valid file
         ifstream inFS(filename);
         char c;
-
+        // while loop that get all characters in the file and adds into the map
         while (inFS.get(c)) {
             if(map.containsKey(c)) {
                 map.put(int(c), map.get(c) + 1);
@@ -65,7 +70,7 @@ void buildFrequencyMap(string filename, bool isFile, hashmapF &map) {
             }
         }
     }
-    else {
+    else { // if not a valid file then treats filename as a string and parses through the string
         for(char c : filename) {
             if(map.containsKey(c)) {
                 map.put(c, map.get(c) + 1);
@@ -75,7 +80,7 @@ void buildFrequencyMap(string filename, bool isFile, hashmapF &map) {
             }
         }
     }
-    map.put(256, 1);
+    map.put(256, 1); // adds EOF character to the the map
 }
 
 //
@@ -84,7 +89,7 @@ void buildFrequencyMap(string filename, bool isFile, hashmapF &map) {
 HuffmanNode* buildEncodingTree(hashmapF &map) {
     priority_queue<HuffmanNode*, vector<HuffmanNode*>, compare> pq;
     
-    for(int key : map.keys()) {
+    for(int key : map.keys()) { // loops through the map and creates a new node for the tree setting everything to defualt values
         HuffmanNode* newNode = new HuffmanNode;
         newNode->character = key;
         newNode->count = map.get(key);
@@ -93,7 +98,7 @@ HuffmanNode* buildEncodingTree(hashmapF &map) {
         pq.push(newNode);
     }
 
-    while(pq.size() > 1) {
+    while(pq.size() > 1) { // while loop that goes through the priority queue to get the root node
         HuffmanNode* firstPop = pq.top();
         pq.pop();
         HuffmanNode* secondPop = pq.top();
@@ -112,32 +117,30 @@ HuffmanNode* buildEncodingTree(hashmapF &map) {
 // *Recursive helper function for building the encoding map.
 //
 void _buildEncodingMap(HuffmanNode* node, hashmapE &encodingMap, string str, HuffmanNode* prev) {
-    if(node == nullptr) {
+    if(node == nullptr) { // checks to see if tree is empty
         return;
     }
-    prev = node;
-    if(node->character != 257) {
+    prev = node; 
+    if(node->character != 257) { // if current node is not a character add pair to encoding map
         encodingMap.insert({int(node->character), str});
         return;
     }
-    _buildEncodingMap(node->zero, encodingMap, str += "0", prev);
-    str.pop_back();
-    _buildEncodingMap(node->one, encodingMap, str += "1", prev);
-    
+    _buildEncodingMap(node->zero, encodingMap, str += "0", prev); // recursive calls to go left
+    str.pop_back(); // adds to string
+    _buildEncodingMap(node->one, encodingMap, str += "1", prev); // recursive call to go right
 }
 
 //
 // *This function builds the encoding map from an encoding tree.
 //
 hashmapE buildEncodingMap(HuffmanNode* tree) {
+    // creates encoding map, node that is root of tree, and an empty string
     hashmapE encodingMap;
     HuffmanNode* node = tree;
     string str = "";
 
-    _buildEncodingMap(node, encodingMap, str, node);
-
-    
-    return encodingMap;  // TO DO: update this return
+    _buildEncodingMap(node, encodingMap, str, node); // calls recursive helper function
+    return encodingMap; // returns the encoding map
 }
 
 //
@@ -150,20 +153,20 @@ hashmapE buildEncodingMap(HuffmanNode* tree) {
 string encode(ifstream& input, hashmapE &encodingMap, ofbitstream& output, int &size, bool makeFile) {
     string result = "";
     char c;
-    while(input.get(c)) {
+    while(input.get(c)) { // while loops that gets each character from input and adds to result string, also updates size
         result += encodingMap[int(c)];
         size += encodingMap[int(c)].size();
     }
-    result += encodingMap[256];
+    result += encodingMap[256]; // adds last character and updates size
     size += encodingMap[256].size();
 
-    if(makeFile) {
+    if(makeFile) { // checks if valid file updates input to output
         for(char c : result) {
             output.writeBit(c == '0' ? 0 : 1);
         }
     }
 
-    return result;  // TO DO: update this return
+    return result;  // returns encoded result string
 }
 
 
@@ -176,24 +179,24 @@ string decode(ifbitstream &input, HuffmanNode* encodingTree, ofstream &output) {
     string result = "";
     HuffmanNode* node = encodingTree;
 
-    while(!input.eof()) {
+    while(!input.eof()) { // while loop that runs unitl end of file
         int bit = input.readBit();
-        if(bit == 0) {
+        if(bit == 0) {  // if else statements that to 0 or 1 in tree based off of current bit in input
             node = node->zero;
         }
         else {
             node = node->one;
         }
-        if(node->character != 257) {
-            if(node->character == 256) {
+        if(node->character != 257) { // if node is not EOF
+            if(node->character == 256) { // if node not a character break out of loop
                 break;
             }
-            output.put(char(node->character));
-            result += node->character;
-            node = encodingTree;
+            output.put(char(node->character)); // otherwise add character to output
+            result += node->character; // add character to result string
+            node = encodingTree; // reset node to root
         }
     }
-    return result;  // TO DO: update this return
+    return result;  // returns decoded result string
 }
 
 //
@@ -205,26 +208,27 @@ string decode(ifbitstream &input, HuffmanNode* encodingTree, ofstream &output) {
 // return a string version of the bit pattern.
 //
 string compress(string filename) {
+    // creates empty string, size set to zero, and a hashmap
     string result = "";
     int size = 0;
     hashmapF fM;
 
-    buildFrequencyMap(filename, true, fM);
-    HuffmanNode* eT = buildEncodingTree(fM);
-    hashmapE eM = buildEncodingMap(eT);
+    buildFrequencyMap(filename, true, fM); // calls the build frequency map function
+    HuffmanNode* eT = buildEncodingTree(fM); // creates encoding tree and calling encoding tree function
+    hashmapE eM = buildEncodingMap(eT); // creates encoding map and calling encoding map function
 
-    ofbitstream output(filename + ".huf");
+    ofbitstream output(filename + ".huf"); // creates outfput file
     output << fM;
 
     ifstream input(filename);
     
-    result = encode(input, eM, output, size, true);
-
+    result = encode(input, eM, output, size, true); // sets result string to the encode function
+    // closes input and output and frees the tree
     input.close();
     output.close();
     freeTree(eT);
 
-    return result;  // TO DO: update this return
+    return result;  // returns the result string
 }
 
 //
@@ -239,20 +243,20 @@ string compress(string filename) {
 // function did.
 //
 string decompress(string filename) {
-    string result = "";
+    string result = ""; // creates the empty result string
 
     hashmap fM;
-    ifbitstream input(filename);
-    ofstream output(filename.substr(0, filename.size() - 8) + "_unc.txt");
+    ifbitstream input(filename); // creates input
+    ofstream output(filename.substr(0, filename.size() - 8) + "_unc.txt"); // creates output file
     
-    input >> fM;
-    HuffmanNode* eT = buildEncodingTree(fM);
+    input >> fM; // takes the input which is the encoded text
+    HuffmanNode* eT = buildEncodingTree(fM); // builds a tree
 
-    result = decode(input, eT, output);
-
+    result = decode(input, eT, output); // sets result string to decoded text
+    // closes input and output and frees the tree
     input.close();
     output.close();
     freeTree(eT);
 
-    return result;  // TO DO: update this return
+    return result;  // returns the result string
 }
